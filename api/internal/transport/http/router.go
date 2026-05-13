@@ -17,6 +17,12 @@ func NewRouter(h *Handlers, cfg config.Config, log *slog.Logger) *fiber.App {
 		AppName:               "packcalc",
 		DisableStartupMessage: true,
 		ErrorHandler:          errorHandler(log),
+		// 16 KB request header buffer. Fiber/fasthttp's default is 4 KB,
+		// which rejects browsers with large cookie sets (the 431
+		// "Request Header Fields Too Large" path). 16 KB matches
+		// Cloudflare's default and covers any reasonable client while
+		// still rejecting genuinely abusive requests.
+		ReadBufferSize: 16384,
 	})
 
 	app.Use(recoverMiddleware())

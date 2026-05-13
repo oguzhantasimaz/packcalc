@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+.git
+.github
+.env
+.env.local
+.env.*.local
+.vercel
+.DS_Store
+**/.DS_Store
+Dockerfile
+.dockerignore
+*.md
+README.md
+.eslintcache

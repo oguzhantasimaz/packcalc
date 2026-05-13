@@ -1,9 +1,27 @@
-# Local dev stack. Brings up the API and Redis. The API selects the
-# Redis store automatically because REDIS_URL is set; remove the var
-# (or override with `docker compose run --rm -e REDIS_URL= api`) to
-# fall back to the in-memory store.
+# Local dev stack. `docker compose up` brings the whole thing up:
+#   - web   (Next.js UI)    → http://localhost:3000
+#   - api   (Go HTTP API)   → http://localhost:8080  · /docs for Swagger UI
+#   - redis (PackStore)     → redis://localhost:6379
+#
+# The API selects the Redis store automatically because REDIS_URL is set
+# in this file. To run the API with the in-memory store instead, use:
+#   docker compose run --rm -e REDIS_URL= api
 
 services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* is inlined at build time. The browser runs on the
+        # host, so this must be a host-reachable URL — not `http://api`.
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    image: packcalc-web:dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
   api:
     build:
       context: ./api

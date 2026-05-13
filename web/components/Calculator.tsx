@@ -8,12 +8,13 @@ import { ApiError, type CalculateResponse } from "@/lib/types";
 
 import { ResultPanel } from "./ResultPanel";
 
+type Parsed = { ok: true; value: number } | { ok: false; reason: string };
+
 export function Calculator() {
   const [orderStr, setOrderStr] = useState("12001");
   const [result, setResult] = useState<CalculateResponse | null>(null);
   const [running, setRunning] = useState(false);
 
-  type Parsed = { ok: true; value: number } | { ok: false; reason: string };
   const parsed: Parsed = (() => {
     const t = orderStr.trim();
     if (t === "") return { ok: false, reason: "Enter an order quantity." };
@@ -39,40 +40,72 @@ export function Calculator() {
   };
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Calculate an order</h2>
-        <span className="text-xs text-zinc-400 dark:text-zinc-500">POST /calculate</span>
-      </div>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Enter an order quantity. The API picks the combination minimizing total items, then packs.
+    <section className="glass animate-fade-up relative overflow-hidden rounded-2xl p-6 md:p-7">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-400/50 to-transparent" />
+
+      <header className="flex items-baseline justify-between">
+        <div>
+          <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-brand-300">
+            02 · Calculate
+          </div>
+          <h2 className="mt-1 font-display text-2xl text-ink-50">Order</h2>
+        </div>
+        <span className="font-mono text-[11px] uppercase tracking-wider text-ink-400">
+          POST · /calculate
+        </span>
+      </header>
+
+      <p className="mt-2 max-w-md text-sm leading-relaxed text-ink-300">
+        Enter a quantity. The API picks the combination that minimizes total items shipped, then the
+        pack count.
       </p>
 
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <input
-          type="number"
-          inputMode="numeric"
-          min={0}
-          step={1}
-          value={orderStr}
-          onChange={(e) => setOrderStr(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void run();
-          }}
-          className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 font-mono text-base tabular-nums shadow-sm outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-amber-400 dark:focus:ring-amber-400"
-          placeholder="e.g. 12001"
-        />
-        <button
-          type="button"
-          onClick={run}
-          disabled={!parsed.ok || running}
-          className="inline-flex items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-600"
-        >
-          {running ? "Calculating…" : "Calculate"}
-        </button>
+      <div className="mt-6">
+        <label className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-400">
+          Items ordered
+        </label>
+        <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+          <div className="relative flex-1">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={orderStr}
+              onChange={(e) => setOrderStr(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void run();
+              }}
+              className="peer w-full rounded-lg border border-ink-700/60 bg-ink-900/60 px-4 py-3.5 font-mono text-2xl tabular-nums text-ink-50 outline-none transition focus:border-brand-400/60 focus:bg-ink-900 focus:ring-2 focus:ring-brand-400/20"
+              placeholder="0"
+            />
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-wider text-ink-500">
+              units
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={run}
+            disabled={!parsed.ok || running}
+            className="group inline-flex items-center justify-center rounded-lg bg-brand-400 px-5 py-3 text-sm font-semibold tracking-wide text-ink-950 shadow-glow-sm transition hover:bg-brand-300 hover:shadow-glow-md disabled:cursor-not-allowed disabled:bg-ink-700 disabled:text-ink-500 disabled:shadow-none sm:px-7"
+          >
+            {running ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-ink-950/30 border-t-ink-950" />
+                Calculating…
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                Calculate
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 6 H10 M6 2 L10 6 L6 10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="square" />
+                </svg>
+              </span>
+            )}
+          </button>
+        </div>
+        {!parsed.ok ? <p className="mt-2 text-xs text-red-300">{parsed.reason}</p> : null}
       </div>
-
-      {!parsed.ok ? <p className="mt-2 text-xs text-red-500">{parsed.reason}</p> : null}
 
       <div className="mt-6">
         <ResultPanel result={result} order={parsed.ok ? parsed.value : null} />

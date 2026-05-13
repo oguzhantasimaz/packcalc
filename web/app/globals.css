@@ -2,26 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light dark;
+@layer base {
+  :root {
+    color-scheme: dark;
+    --brand: #00acde;
+    --brand-glow: 0 172 222;
+  }
+
+  html,
+  body {
+    font-feature-settings: "tnum" on, "ss01" on, "cv01" on;
+  }
+
+  body {
+    background: #050a10;
+    color: #dce6f2;
+    min-height: 100svh;
+  }
+
+  /* Tabular numerals across number-y elements. */
+  input[type="number"],
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Selection color uses brand cyan. */
+  ::selection {
+    background: rgba(0, 172, 222, 0.35);
+    color: #fff;
+  }
 }
 
-html,
-body {
-  font-feature-settings: "tnum" on, "ss01" on;
+@layer components {
+  .glass {
+    background: linear-gradient(
+        180deg,
+        rgba(23, 34, 52, 0.6) 0%,
+        rgba(12, 19, 32, 0.6) 100%
+      );
+    border: 1px solid rgba(0, 172, 222, 0.12);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 12px 40px -12px rgba(0, 0, 0, 0.6);
+  }
+
+  .glass-strong {
+    background: linear-gradient(
+        180deg,
+        rgba(30, 45, 68, 0.7) 0%,
+        rgba(17, 26, 40, 0.7) 100%
+      );
+    border: 1px solid rgba(0, 172, 222, 0.22);
+    backdrop-filter: blur(10px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(160%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      0 20px 60px -20px rgba(0, 0, 0, 0.7),
+      0 0 40px -20px rgba(0, 172, 222, 0.2);
+  }
+
+  /* Tiny status pill used in the header. */
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-brand-400/30 bg-brand-400/5 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-brand-300;
+  }
+
+  /* Pack count chip in the result panel. */
+  .chip {
+    @apply relative inline-flex items-baseline gap-1.5 rounded-md border border-brand-400/30 bg-brand-400/[0.08] px-3 py-2 font-mono text-base text-brand-100 shadow-[inset_0_0_0_1px_rgba(0,172,222,0.04)] transition;
+  }
+  .chip::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 0.375rem;
+    background: linear-gradient(135deg, rgba(0, 172, 222, 0.4), transparent 60%);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .chip:hover::before {
+    opacity: 1;
+  }
 }
 
-/* Subtle gridded backdrop. Light by default, switches in dark mode. */
-.bg-grid {
-  background-image:
-    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
-  background-size: 24px 24px;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Conic gradient ring used on the focus halo of the order input. */
+  .ring-cyan-soft {
+    box-shadow: 0 0 0 1px rgba(0, 172, 222, 0.4), 0 0 28px rgba(0, 172, 222, 0.25);
+  }
 }
-@media (prefers-color-scheme: dark) {
-  .bg-grid {
-    background-image:
-      linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+
+/* Reduce motion: stop the drifting blobs but keep the grid still. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
