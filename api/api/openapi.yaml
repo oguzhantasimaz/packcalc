@@ -1,0 +1,342 @@
+openapi: 3.1.0
+info:
+  title: Packcalc API
+  version: 1.0.0
+  summary: Pack-shipment combination calculator with a runtime-configurable pack-size set.
+  description: |
+    The packcalc API computes, for a given order quantity, the combination of
+    whole packs that ships the minimum number of items (rule 2) and, among
+    such combinations, uses the fewest packs (rule 3). Pack sizes are
+    runtime-configurable via `PUT /api/v1/packs`.
+
+    All responses include an `X-Request-Id` header. Errors share a single
+    `ErrorResponse` shape carrying a stable machine-readable `code`, a
+    human-readable `message`, and the originating request id.
+  contact:
+    name: Oguzhan Tasimaz
+    url: https://case.oguzhantasimaz.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.case.oguzhantasimaz.com
+    description: Live demo
+
+tags:
+  - name: health
+    description: Liveness and readiness probes.
+  - name: packs
+    description: Read and replace the pack-size configuration.
+  - name: calculate
+    description: Compute pack combinations for an order.
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Liveness probe
+      description: Returns 200 as long as the process is running. Does not touch the store.
+      responses:
+        "200":
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+
+  /readyz:
+    get:
+      tags: [health]
+      operationId: getReady
+      summary: Readiness probe
+      description: |
+        Returns 200 when the API is ready to serve traffic, including a
+        round-trip to the configured pack store. Returns 503 if the store
+        is unreachable.
+      responses:
+        "200":
+          description: API is ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ready
+        "503":
+          description: API is not ready (store unreachable, dependency failure, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: not_ready
+                message: store ping failed
+                request_id: 01HBCXYZ...
+
+  /api/v1/packs:
+    get:
+      tags: [packs]
+      operationId: getPacks
+      summary: Read the current pack-size set
+      description: |
+        Returns the pack sizes (sorted by size descending) and an opaque
+        version identifier. The same version is mirrored in the `ETag`
+        response header for use as an `If-Match` precondition on a
+        subsequent PUT.
+      responses:
+        "200":
+          description: Current pack set.
+          headers:
+            ETag:
+              description: Opaque version of the returned pack set; pass to PUT as `If-Match`.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackSet'
+              example:
+                sizes: [5000, 2000, 1000, 500, 250]
+                version: 01HBCDEF0GH1JK2MN3PQ4RS5T6
+    put:
+      tags: [packs]
+      operationId: putPacks
+      summary: Replace the pack-size set atomically
+      description: |
+        Atomically replaces the entire pack-size set. Pass the version
+        returned by a recent GET in the `If-Match` header to make the
+        write conditional on an unchanged set; omit the header to write
+        unconditionally.
+      parameters:
+        - in: header
+          name: If-Match
+          description: Opaque version returned by a prior GET or PUT. When present, the write succeeds only if the current version matches.
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PutPacksRequest'
+            example:
+              sizes: [250, 500, 1000, 2000, 5000]
+      responses:
+        "200":
+          description: Pack set replaced. The response carries the new version.
+          headers:
+            ETag:
+              description: Opaque version of the newly written pack set.
+              required: true
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PackSet'
+              example:
+                sizes: [5000, 2000, 1000, 500, 250]
+                version: 01HBCDEF0GH1JK2MN3PQ4RS5T6
+        "400":
+          description: Validation error (empty set, non-positive size, duplicate, malformed body, etc.).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: invalid_request
+                message: "pack sizes must be > 0: got 0"
+                request_id: 01HBCXYZ...
+        "412":
+          description: "`If-Match` did not match the current version."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: version_mismatch
+                message: "version mismatch"
+                request_id: 01HBCXYZ...
+        "422":
+          description: Input exceeds configured limits (too many sizes, size above max).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: limit_exceeded
+                message: "size=99999999 exceeds max=10000000"
+                request_id: 01HBCXYZ...
+
+  /api/v1/calculate:
+    post:
+      tags: [calculate]
+      operationId: calculate
+      summary: Compute pack combination for an order
+      description: |
+        Returns the pack combination that ships the minimum number of items
+        meeting or exceeding `order` (rule 2), using the fewest packs among
+        such combinations (rule 3). Uses the currently stored pack-size set.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculateRequest'
+            example:
+              order: 12001
+      responses:
+        "200":
+          description: Calculation result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculateResponse'
+              example:
+                packs:
+                  - { size: 5000, count: 2 }
+                  - { size: 2000, count: 1 }
+                  - { size: 250, count: 1 }
+                total_items: 12250
+                total_packs: 4
+                overshoot: 249
+        "400":
+          description: Validation error on the request (negative order, malformed body).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: invalid_request
+                message: "order must be >= 0: got -1"
+                request_id: 01HBCXYZ...
+        "422":
+          description: Input exceeds configured limits (order above max).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: limit_exceeded
+                message: "order=10000001 exceeds max=10000000"
+                request_id: 01HBCXYZ...
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Either `ok` (liveness) or `ready` (readiness).
+          examples: [ok, ready]
+
+    PackCount:
+      type: object
+      description: A bucket of a single pack size used in a calculation result.
+      required: [size, count]
+      properties:
+        size:
+          type: integer
+          minimum: 1
+          description: Pack size in items.
+        count:
+          type: integer
+          minimum: 1
+          description: Number of packs of this size used in the result.
+
+    PackSet:
+      type: object
+      description: Current pack-size configuration plus its opaque version.
+      required: [sizes, version]
+      properties:
+        sizes:
+          type: array
+          description: Pack sizes, sorted by size descending. Normalized server-side.
+          minItems: 1
+          maxItems: 100
+          items:
+            type: integer
+            minimum: 1
+            maximum: 10000000
+        version:
+          type: string
+          description: Opaque, server-assigned version (ULID). Pass to PUT as `If-Match` for optimistic concurrency.
+
+    PutPacksRequest:
+      type: object
+      description: Request body for `PUT /api/v1/packs`. The server normalizes and de-duplicates.
+      required: [sizes]
+      properties:
+        sizes:
+          type: array
+          description: Pack sizes. Must be non-empty, all positive, and contain no duplicates.
+          minItems: 1
+          maxItems: 100
+          items:
+            type: integer
+            minimum: 1
+            maximum: 10000000
+
+    CalculateRequest:
+      type: object
+      required: [order]
+      properties:
+        order:
+          type: integer
+          minimum: 0
+          maximum: 10000000
+          description: Number of items the customer ordered.
+
+    CalculateResponse:
+      type: object
+      required: [packs, total_items, total_packs, overshoot]
+      properties:
+        packs:
+          type: array
+          description: The pack combination. Sorted by size descending.
+          items:
+            $ref: '#/components/schemas/PackCount'
+        total_items:
+          type: integer
+          minimum: 0
+          description: Sum of `size * count` across all packs.
+        total_packs:
+          type: integer
+          minimum: 0
+          description: Sum of `count` across all packs.
+        overshoot:
+          type: integer
+          minimum: 0
+          description: "`total_items - order`. Zero when the order is met exactly."
+
+    ErrorResponse:
+      type: object
+      description: |
+        Single error envelope used by every non-2xx response. The `code`
+        is a stable machine-readable slug; the `message` is human-readable
+        and may include input echo for debuggability; the `request_id`
+        ties the response to log lines.
+      required: [code, message, request_id]
+      properties:
+        code:
+          type: string
+          description: Stable machine-readable error slug.
+          examples:
+            - invalid_request
+            - version_mismatch
+            - limit_exceeded
+            - not_ready
+            - internal
+        message:
+          type: string
+          description: Human-readable error message.
+        request_id:
+          type: string
+          description: Request id (echoes the `X-Request-Id` request/response header).
