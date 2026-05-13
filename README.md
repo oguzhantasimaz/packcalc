@@ -1,2 +1,3 @@
 # packcalc
-packcalc
+
+Color: #00ACDE
