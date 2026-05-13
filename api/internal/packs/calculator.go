@@ -170,16 +170,13 @@ func Calculate(order int, sizes []int) (Result, error) {
 	}, nil
 }
 
-// validate enforces the input contract for Calculate. Errors are returned
-// wrapped via fmt.Errorf so call sites can use errors.Is to match the
-// sentinel while still receiving context-rich messages.
-func validate(order int, sizes []int) error {
-	if order < 0 {
-		return fmt.Errorf("%w: got %d", ErrInvalidOrder, order)
-	}
-	if order > MaxOrder {
-		return fmt.Errorf("%w: order=%d exceeds max=%d", ErrLimitExceeded, order, MaxOrder)
-	}
+// ValidateSizes enforces the contract for a pack-size set: non-empty, no
+// duplicates, all positive, and within the configured upper bounds. It is
+// shared between the calculator and the store so both layers agree on what
+// a "valid" pack set looks like. Errors are wrapped via fmt.Errorf so call
+// sites can use errors.Is to match the sentinel while still receiving
+// context-rich messages.
+func ValidateSizes(sizes []int) error {
 	if len(sizes) == 0 {
 		return ErrEmptySizes
 	}
@@ -200,4 +197,16 @@ func validate(order int, sizes []int) error {
 		seen[s] = struct{}{}
 	}
 	return nil
+}
+
+// validate enforces the full Calculate contract: a valid order plus a
+// valid sizes set.
+func validate(order int, sizes []int) error {
+	if order < 0 {
+		return fmt.Errorf("%w: got %d", ErrInvalidOrder, order)
+	}
+	if order > MaxOrder {
+		return fmt.Errorf("%w: order=%d exceeds max=%d", ErrLimitExceeded, order, MaxOrder)
+	}
+	return ValidateSizes(sizes)
 }
