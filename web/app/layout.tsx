@@ -45,7 +45,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`${instrumentSerif.variable} ${manrope.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="font-sans antialiased">
+      {/*
+        suppressHydrationWarning is needed on <body> because browser
+        extensions (ColorZilla, Grammarly, LastPass, etc.) inject
+        attributes like cz-shortcut-listen before React hydrates. The
+        warning is harmless but spammy in dev. This does NOT suppress
+        warnings on any descendant.
+      */}
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <Background />
         {children}
         <Toaster

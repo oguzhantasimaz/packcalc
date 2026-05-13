@@ -17,10 +17,14 @@ info:
     url: https://case.oguzhantasimaz.com
 
 servers:
+  # Production server is listed first so Swagger UI's "Try it out"
+  # defaults to the live API when the docs are loaded from that origin.
+  # Mixed-content browsers would otherwise block calls to localhost
+  # from a page served over HTTPS.
+  - url: https://api.oguzhantasimaz.com
+    description: Live demo
   - url: http://localhost:8080
     description: Local development
-  - url: https://api.case.oguzhantasimaz.com
-    description: Live demo
 
 tags:
   - name: health
