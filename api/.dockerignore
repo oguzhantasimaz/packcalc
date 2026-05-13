@@ -1,0 +1,17 @@
+.git
+.github
+.claude
+.cursor
+.DS_Store
+**/.DS_Store
+.idea
+.vscode
+Dockerfile
+.dockerignore
+docker-compose.yml
+*.md
+README.md
+server
+bin/
+tmp/
+.air.toml

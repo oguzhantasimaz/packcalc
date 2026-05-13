@@ -27,6 +27,8 @@ func NewRouter(h *Handlers, cfg config.Config, log *slog.Logger) *fiber.App {
 	app.Get("/healthz", h.Healthz)
 	app.Get("/readyz", h.Readyz)
 
+	mountDocs(app)
+
 	v1 := app.Group("/api/v1")
 	v1.Get("/packs", h.GetPacks)
 	v1.Put("/packs", h.PutPacks)
